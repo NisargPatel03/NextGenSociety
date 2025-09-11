@@ -71,3 +71,6 @@ At this point, you have all the necessary files to run the projet. You will stil
 <img src= 'https://user-images.githubusercontent.com/65078610/112977938-4da7ab80-9174-11eb-93f1-562a30f8bb01.png' width="1200">
 <img src= 'https://user-images.githubusercontent.com/65078610/112977983-59936d80-9174-11eb-9693-24ff4572ab4d.png' width="1200">
 <img src= 'https://user-images.githubusercontent.com/65078610/112978005-644e0280-9174-11eb-9ae2-35922ab08bcd.png' width="1200">
+
+
+"# NextGenSociety" 

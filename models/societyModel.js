@@ -93,3 +93,4 @@ const societySchema = mongoose.Schema(
 )
 
 exports.Society = mongoose.model("society", societySchema);
+

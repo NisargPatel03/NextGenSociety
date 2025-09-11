@@ -448,26 +448,36 @@ app.get("/editProfile", (req,res) => {
 
 app.get('/success', async (req, res) => {
     try {
-        const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
-        const customer = await stripe.customers.retrieve(session.customer);
-        
-        const foundUser = await user_collection.User.findOne({_id: req.user.id});
-        foundUser.lastPayment.date = new Date(customer.created*1000);
-        foundUser.lastPayment.amount = session.amount_total/100;
-        foundUser.lastPayment.invoice = customer.invoice_prefix;
-        
-        await foundUser.save();
-        
-        const transactionDate = new Date(customer.created*1000).toLocaleString().split(', ')[0];
-        res.render("success", {
-            invoice: customer.invoice_prefix,
-            amount: session.amount_total/100,
-            date: transactionDate
-        });
-    } catch(err) {
-        console.error(err);
-        res.status(500).send("Server error");
+    const session = await stripe.checkout.sessions.retrieve(req.query.session_id, {
+      expand: ["payment_intent"],
+    });
+
+    // Payment details
+    const amountPaid = session.amount_total / 100;
+    const paymentDate = new Date().toLocaleDateString();
+
+    // Save to DB if user exists
+    if (req.user) {
+      const foundUser = await user_collection.User.findById(req.user.id);
+
+      foundUser.lastPayment.date = new Date();
+      foundUser.lastPayment.amount = amountPaid;
+      foundUser.lastPayment.invoice = session.id;
+
+      await foundUser.save();
     }
+
+    // Render success.ejs with data
+    res.render("success", {
+      invoice: session.id,
+      amount: amountPaid,
+      date: paymentDate,
+    });
+
+  } catch (err) {
+    console.error("Stripe /success error:", err);
+    res.status(500).send("Something went wrong on the success page.");
+  }
 });
 
 app.post('/checkout-session', async (req, res) => {
@@ -487,10 +497,10 @@ app.post('/checkout-session', async (req, res) => {
 		},
 	  ],
 	  mode: 'payment',
-	//   success_url: "http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}",
-	//   cancel_url: "http://localhost:3000/bill",
-	  success_url: "https://esociety-fdbd.onrender.com/success?session_id={CHECKOUT_SESSION_ID}",
-	  cancel_url: "https://esociety-fdbd.onrender.com/bill",
+	  success_url: "http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}",
+	  cancel_url: "http://localhost:3000/bill",
+	//   success_url: "https://esociety-fdbd.onrender.com/success?session_id={CHECKOUT_SESSION_ID}",
+	//   cancel_url: "https://esociety-fdbd.onrender.com/bill",
 	});
   
 	res.json({ id: session.id });

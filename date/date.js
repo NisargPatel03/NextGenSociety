@@ -12,3 +12,4 @@ function monthDiff(dateFrom, dateTo) {
     (12 * (dateTo.getFullYear() - dateFrom.getFullYear()))
 }
 exports.monthDiff = monthDiff
+
