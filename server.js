@@ -1,6 +1,21 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv')
+dotenv.config();
+
+const nodemailer = require("nodemailer");
+
+// Configure Brevo SMTP transporter
+const transporter = nodemailer.createTransport({
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS
+  }
+});
+
 const _ = require('lodash');
 const session = require('express-session');
 const passport = require('passport');
@@ -12,7 +27,7 @@ const db = require(__dirname+'/config/db');
 const date = require(__dirname+'/date/date');
 
 // Access environment variables
-dotenv.config();
+
 const stripe = require('stripe')(process.env.SECRET_KEY);
 const app = express()
 app.set('view engine','ejs');
@@ -40,6 +55,29 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 db.connectDB()
+
+app.post("/send-mail", async (req, res) => {
+  try {
+    const { Name, Email, Message } = req.body;
+
+    await transporter.sendMail({
+      from: `"E-Society Contact" <kbnisargpatel001454@gmail.com>`,
+      to: process.env.TO_EMAIL,
+      subject: `New Contact Form Message from ${Name}`,
+      text: `
+        Name: ${Name}
+        Email: ${Email}
+        Message: ${Message}
+      `
+    });
+
+    res.send("✅ Email sent successfully!");
+  } catch (err) {
+    console.error("❌ Error sending email:", err);
+    res.status(500).send("Failed to send email.");
+  }
+});
+
 
 app.get("/", async (req,res) => {
 	// Track page visits + users & societies registered
