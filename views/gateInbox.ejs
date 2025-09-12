@@ -1,0 +1,78 @@
+<%- include('partials/header') %>
+<div class="container">
+    <div class="card">
+        <h2>Gate Inbox</h2>
+    </div>
+
+    <div class="card">
+        <h3>Pending Approvals</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Visitor</th>
+                    <th>Purpose</th>
+                    <th>Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if(pending && pending.length){ %>
+                    <% pending.forEach(function(r){ %>
+                        <tr>
+                            <td><%= new Date(r.createdAt).toLocaleString() %></td>
+                            <td><%= r.visitorName %></td>
+                            <td><%= r.purpose %></td>
+                            <td><%= r.notes || '' %></td>
+                            <td>
+                                <form action="/gate/approve" method="POST" style="display:inline-block;">
+                                    <input type="hidden" name="requestId" value="<%= r._id %>" />
+                                    <button class="btn-success" type="submit">Approve</button>
+                                </form>
+                                <form action="/gate/reject" method="POST" style="display:inline-block; margin-left:8px;">
+                                    <input type="hidden" name="requestId" value="<%= r._id %>" />
+                                    <button class="btn-danger" type="submit">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="5">No pending approvals</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Recent Decisions</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Updated</th>
+                    <th>Visitor</th>
+                    <th>Purpose</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if(history && history.length){ %>
+                    <% history.forEach(function(r){ %>
+                        <tr>
+                            <td><%= new Date(r.updatedAt).toLocaleString() %></td>
+                            <td><%= r.visitorName %></td>
+                            <td><%= r.purpose %></td>
+                            <td><%= r.status %></td>
+                            <td><%= r.notes || '' %></td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="5">No history</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<%- include('partials/footer') %>
+
+

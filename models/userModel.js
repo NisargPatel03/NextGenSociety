@@ -14,6 +14,11 @@ const userSchema = new mongoose.Schema (
 			required: true,
 			default: false
 		},
+		isWatchman: {
+			type: Boolean,
+			required: true,
+			default: false
+		},
 		societyName: {
 			type: String,
 			required: true

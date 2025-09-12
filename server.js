@@ -25,6 +25,9 @@ const society_collection = require("./models/societyModel");
 const visit_collection = require("./models/visitModel");
 const db = require(__dirname+'/config/db');
 const date = require(__dirname+'/date/date');
+const ContactRequest = require("./models/contactRequest");
+const gate_request_collection = require("./models/gateRequestModel");
+
 
 // Access environment variables
 
@@ -115,6 +118,22 @@ app.get("/login", (req,res) => {
 	res.render("login");
 });
 
+// Watchman auth views
+app.get("/watchman/login", (req,res) => {
+    res.render("watchmanLogin");
+});
+
+app.get("/watchman/signup", (req,res) => {
+    society_collection.Society.find()
+        .then(societies => {
+            res.render("watchmanSignup", {societies});
+        })
+        .catch(err => {
+            console.error(err);
+            res.status(500).send("Server error");
+        });
+});
+
 app.get("/signup", (req,res) => {
     society_collection.Society.find()
         .then(societies => {
@@ -193,40 +212,65 @@ app.get("/loginFailure", (req,res) => {
 	})
 });
 
-app.get("/residents", async (req,res) => {
-    if(req.isAuthenticated() && req.user.validation=='approved'){
-        try {
-            const userSocietyName = req.user.societyName;
-            
-            const allSocietyUsers = await user_collection.User.find({
-              societyName: userSocietyName,
-            });
+app.get("/residents", async (req, res) => {
+  if (req.isAuthenticated() && req.user.validation == "approved") {
+    try {
+      const userSocietyName = req.user.societyName;
 
-            const foundUsers = [];
-            const foundAppliedUsers = [];
+      const allSocietyUsers = await user_collection.User.find({
+        societyName: userSocietyName,
+      });
 
-            allSocietyUsers.forEach((user) => {
-              if (user.validation === "approved") {
-                foundUsers.push(user);
-              } else if (user.validation === "applied") {
-                foundAppliedUsers.push(user);
-              }
-            });
-            
-            res.render("residents", {
-                societyResidents: foundUsers,
-                appliedResidents: foundAppliedUsers,
-                societyName: userSocietyName,
-                isAdmin: req.user.isAdmin
-            });
-        } catch(err) {
-            console.error(err);
-            res.status(500).send("Server error");
+      const foundUsers = [];
+      const foundAppliedUsers = [];
+
+      for (let user of allSocietyUsers) {
+        if (user.validation === "approved") {
+          const approvedRequest = await ContactRequest.findOne({
+            $or: [
+              { fromResident: req.user._id, toResident: user._id, status: "approved" },
+              { fromResident: user._id, toResident: req.user._id, status: "approved" },
+            ],
+          });
+
+          const pendingRequest = await ContactRequest.findOne({
+            $or: [
+              { fromResident: req.user._id, toResident: user._id, status: "pending" },
+              { fromResident: user._id, toResident: req.user._id, status: "pending" },
+            ],
+          });
+
+          foundUsers.push({
+            _id: user._id,
+            flatNumber: user.flatNumber,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneNumber: approvedRequest ? user.phoneNumber : null,
+            requestStatus: approvedRequest ? "approved" : pendingRequest ? "pending" : null,
+            receivedRequest: pendingRequest && pendingRequest.toResident.equals(req.user._id),
+            requestId: pendingRequest ? pendingRequest._id : null
+          });
+        } else if (user.validation === "applied") {
+          foundAppliedUsers.push(user);
         }
-    } else {
-        res.redirect("/login");
+      }
+
+      res.render("residents", {
+        societyResidents: foundUsers,
+        appliedResidents: foundAppliedUsers,
+        societyName: userSocietyName,
+        isAdmin: req.user.isAdmin,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send("Server error");
     }
-})
+  } else {
+    res.redirect("/login");
+  }
+});
+
+
 
 app.get("/noticeboard", (req,res) => {
     if(req.isAuthenticated() && req.user.validation=='approved'){
@@ -392,6 +436,131 @@ app.get("/helpdesk",(req,res) => {
         }
     } else {
         res.redirect("/login");
+    }
+})
+
+// Watchman dashboard: create gate requests and see recent
+app.get("/gate", async (req,res) => {
+    if(req.isAuthenticated() && req.user.validation=='approved' && req.user.isWatchman){
+        try {
+            const recentRequests = await gate_request_collection.GateRequest.find({
+                societyName: req.user.societyName
+            }).sort({createdAt: -1}).limit(50);
+            res.render("watchman", {requests: recentRequests});
+        } catch(err){
+            console.error(err);
+            res.status(500).send("Server error");
+        }
+    } else {
+        res.redirect("/login");
+    }
+})
+
+// Watchman creates a new gate request for resident approval
+app.post("/gate/request", async (req,res) => {
+    try {
+        if(!(req.isAuthenticated() && req.user.validation=='approved' && req.user.isWatchman)){
+            return res.redirect("/login");
+        }
+
+        const { flatNumber, visitorName, purpose, notes } = req.body;
+        const resident = await user_collection.User.findOne({
+            societyName: req.user.societyName,
+            flatNumber: flatNumber,
+            validation: 'approved'
+        });
+        if(!resident){
+            return res.status(404).send("Resident not found for this flat number");
+        }
+
+        const requestDoc = new gate_request_collection.GateRequest({
+            societyName: req.user.societyName,
+            residentId: resident._id,
+            residentFlatNumber: resident.flatNumber,
+            visitorName,
+            purpose,
+            fromWatchmanId: req.user._id,
+            status: 'pending',
+            notes
+        });
+        await requestDoc.save();
+
+        // Notify resident via email (best-effort)
+        try {
+            await transporter.sendMail({
+                from: `"Society Gate" <notifications@esociety.app>`,
+                to: resident.username,
+                subject: `Gate Approval Needed - Flat ${resident.flatNumber}`,
+                text: `Visitor: ${visitorName}\nPurpose: ${purpose}\nPlease open app -> Gate Inbox to approve.`
+            });
+        } catch(mailErr){
+            console.warn("Email notify failed:", mailErr.message);
+        }
+
+        res.redirect("/gate");
+    } catch(err){
+        console.error(err);
+        res.status(500).send("Server error");
+    }
+})
+
+// Resident inbox: view and respond to gate requests
+app.get("/gate/inbox", async (req,res) => {
+    if(req.isAuthenticated() && req.user.validation=='approved' && !req.user.isWatchman){
+        try {
+            const pending = await gate_request_collection.GateRequest.find({
+                residentId: req.user._id,
+                status: 'pending'
+            }).sort({createdAt: -1});
+            const history = await gate_request_collection.GateRequest.find({
+                residentId: req.user._id,
+                status: { $ne: 'pending' }
+            }).sort({updatedAt: -1}).limit(50);
+            res.render("gateInbox", { pending, history });
+        } catch(err){
+            console.error(err);
+            res.status(500).send("Server error");
+        }
+    } else {
+        res.redirect("/login");
+    }
+})
+
+app.post("/gate/approve", async (req,res) => {
+    try {
+        if(!(req.isAuthenticated() && req.user.validation=='approved' && !req.user.isWatchman)){
+            return res.redirect("/login");
+        }
+        const { requestId } = req.body;
+        const doc = await gate_request_collection.GateRequest.findOne({_id: requestId, residentId: req.user._id});
+        if(!doc){
+            return res.status(404).send("Request not found");
+        }
+        doc.status = 'approved';
+        await doc.save();
+        res.redirect("/gate/inbox");
+    } catch(err){
+        console.error(err);
+        res.status(500).send("Server error");
+    }
+})
+
+app.post("/gate/reject", async (req,res) => {
+    try {
+        if(!(req.isAuthenticated() && req.user.validation=='approved' && !req.user.isWatchman)){
+            return res.redirect("/login");
+        }
+        const { requestId } = req.body;
+        const doc = await gate_request_collection.GateRequest.findOne({_id: requestId, residentId: req.user._id});
+        if(!doc){
+            return res.status(404).send("Request not found");
+        }
+        doc.status = 'rejected';
+        await doc.save();
+        res.redirect("/gate/inbox");
+    } catch(err){
+        console.error(err);
+        res.status(500).send("Server error");
     }
 })
 
@@ -814,6 +983,54 @@ app.post("/signup", async (req,res) => {
     }
 });
 
+// Watchman Signup (role = watchman, auto-approved)
+app.post("/watchman/signup", async (req,res) => {
+    try {
+        const foundSociety = await society_collection.Society.findOne({societyName: req.body.societyName});
+        if(foundSociety) {
+            const user = await user_collection.User.register(
+                {
+                    username: req.body.username,
+                    societyName: req.body.societyName,
+                    flatNumber: req.body.flatNumber || 'GATE',
+                    firstName: req.body.firstName || 'Watchman',
+                    lastName: req.body.lastName || '',
+                    phoneNumber: req.body.phoneNumber,
+                    isWatchman: true,
+                    validation: 'approved'
+                },
+                req.body.password
+            );
+            await new Promise((resolve, reject) => {
+                req.login(user, (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
+            res.redirect("/gate");
+        } else {
+            const failureMessage = "Sorry, society is not registered, Please double-check society name.";
+            res.render("failure", {
+                message: failureMessage,
+                href: "/watchman/signup",
+                messageSecondary: "Society not registered?",
+                hrefSecondary: "/register",
+                buttonSecondary: "Register Society"
+            });
+        }
+    } catch(err) {
+        console.error(err);
+        const failureMessage = "Sorry, this email address is not available. Please choose a different address.";
+        res.render("failure", {
+            message: failureMessage,
+            href: "/watchman/signup",
+            messageSecondary: "Society not registered?",
+            hrefSecondary: "/register",
+            buttonSecondary: "Register Society"
+        });
+    }
+});
+
 app.post("/register", async (req,res) => {
     try {
         // Signup only if society not registered
@@ -879,6 +1096,57 @@ app.post("/login", passport.authenticate("local", {
 	successRedirect: "/home",
 	failureRedirect: "/loginFailure"
 }));
+
+// Watchman login (redirect to /gate if role ok)
+app.post("/watchman/login", passport.authenticate("local", {
+    failureRedirect: "/loginFailure"
+}), (req,res) => {
+    if(req.user && req.user.isWatchman){
+        return res.redirect("/gate");
+    }
+    req.logout(function(){
+        res.redirect("/loginFailure");
+    });
+});
+
+// Send a contact request
+app.post("/contact-request/:toResidentId", async (req, res) => {
+  try {
+    const toResidentId = req.params.toResidentId;
+
+    // check if request already exists
+    let existing = await ContactRequest.findOne({
+      fromResident: req.user._id,
+      toResident: toResidentId,
+    });
+
+    if (!existing) {
+      const request = new ContactRequest({
+        fromResident: req.user._id,
+        toResident: toResidentId,
+      });
+      await request.save();
+    }
+
+    res.redirect("/residents");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error sending request");
+  }
+});
+
+// Approve a contact request
+app.post("/approve-request/:requestId", async (req, res) => {
+  try {
+    const action = req.body.action; // "approved" or "declined"
+    await ContactRequest.findByIdAndUpdate(req.params.requestId, { status: action });
+    res.redirect("/residents");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating request");
+  }
+});
+
 
 app.get("/health", (req, res) => {
     res.status(200).send("Server is running");

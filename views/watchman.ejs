@@ -1,0 +1,67 @@
+<%- include('partials/header') %>
+<div class="container">
+    <div class="card">
+        <h2>Watchman Panel</h2>
+        <form action="/gate/request" method="POST">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Flat Number</label>
+                    <input class="form-control" type="text" name="flatNumber" required />
+                </div>
+                <div class="form-group">
+                    <label>Visitor Name</label>
+                    <input class="form-control" type="text" name="visitorName" required />
+                </div>
+                <div class="form-group">
+                    <label>Purpose</label>
+                    <select class="form-control" name="purpose" required>
+                        <option value="guest">Guest</option>
+                        <option value="delivery">Delivery</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <input class="form-control" type="text" name="notes" />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn-primary" type="submit">Send Approval Request</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Recent Activity</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Flat</th>
+                    <th>Visitor</th>
+                    <th>Purpose</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if(requests && requests.length){ %>
+                    <% requests.forEach(function(r){ %>
+                        <tr>
+                            <td><%= new Date(r.createdAt).toLocaleString() %></td>
+                            <td><%= r.residentFlatNumber %></td>
+                            <td><%= r.visitorName %></td>
+                            <td><%= r.purpose %></td>
+                            <td><%= r.status %></td>
+                            <td><%= r.notes || '' %></td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="6">No entries found</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<%- include('partials/footer') %>
+
+
