@@ -104,53 +104,72 @@
   <br>
 
   <% if(receipt.invoice){ %>
-  <hr class="my-4">
-  <div style="display: flex; justify-content: center ">
-    <button id="download-receipt" class="btn btn-info btn-md text-uppercase" style="border-radius:3rem; max-width:180px; margin: 0 0 30px;">
-      Download Receipt
-    </button>
-  </div>
-  <div id="receipt" style="background-color: rgba(128, 128, 128, 0.048); max-width: 1000px; margin: auto;">
-    <table class="bill-header" style="border: 1px solid #ddd; border-bottom: none;">
-      <tr>
-        <td>
-          <p style="padding-top:10px"><%= society.societyName %></p>
-          <p><%= society.societyAddress.address %>, <%= society.societyAddress.city %>, 
-            <%= society.societyAddress.district %>-<%= society.societyAddress.postalCode %>
-          </p>
-        </td>
-      </tr>
-    </table>
-    <% let [month, date, year1]    = new Date(receipt.date).toLocaleDateString().split("/") %>
-    <% let receiptMonth = new Date(receipt.date).toLocaleString("default", { month: "long" }) %>
-    <div id="receipt" style="display: flex; justify-content: center; border: 1px solid #ddd; border-bottom: none;  max-width: 1000px; margin: auto;">
-      <p style="padding: 20px 0 10px"><b>Receipt</b></p>
-    </div>
-    <div style="padding: 0 20px 10px; display: flex; justify-content: space-between; border: 1px solid #ddd; border-top: none; border-bottom: none;  max-width: 1000px; margin: auto;">
-      <p>Receipt: <b><%= receipt.invoice %></b></p>
-      <p>For: <b><%= receiptMonth %>, <%= year1 %></b></p>
-      <p>Date: <b><%= date %>/<%= month %>/<%= year1 %></b></p>
-    </div>
-    <div  style="padding: 0 20px; display: flex; justify-content: space-between; border: 1px solid #ddd; border-top: none; border-bottom: none;  max-width: 1000px; margin: auto;">
-      <p>Received with thanks from <%= resident.flatNumber %> - <%= resident.firstName %> <%= resident.lastName %>, 
-        the sum of rupees <span style="color: black;" id="words"></span style="color: black;"> on <%= date %> <%= receiptMonth %>, <%= year1 %>.
-      </p>
-    </div>
-    <div style="padding: 20px 20px 10px; display: flex; justify-content: space-between; flex-direction: column; border: 1px solid #ddd; border-bottom: none; border-top: none;  max-width: 1000px; margin: auto;">
-      <p><b>Remark:</b></p>
-      <p>Being amount received from member towards maintenance charges for the month of <%= receiptMonth %>, <%= year1 %>.</p>
-    </div>
-    <input id="number" type="text" style="display: none;" value="<%= receipt.amount %>" />
-    <div style="padding: 20px 20px; display: flex; justify-content: space-between; border: 1px solid #ddd; border-top: none;  max-width: 1000px; margin: auto;">
-      <p>₹<b><%= receipt.amount %></b></p>
-      <div style="display: flex; justify-content: space-between; flex-direction: column">
+<hr class="my-4">
+<div style="display: flex; justify-content: center ">
+  <button id="download-receipt" class="btn btn-info btn-md text-uppercase" style="border-radius:3rem; max-width:180px; margin: 0 0 30px;">
+    Download Receipt
+  </button>
+</div>
+
+<!-- Table-based Receipt Layout -->
+<div id="receipt" style="background:#fff; border:1px solid #ccc; border-radius:6px; max-width:850px; margin:auto; font-family:'Segoe UI', Tahoma, sans-serif; font-size:14px; color:#222;">
+  
+  <table style="width:100%; border-collapse:collapse;">
+    <!-- Header Row -->
+    <tr style="border-bottom:2px solid #444;">
+      <td style="padding:15px;">
+        <h2 style="margin:0; font-size:20px;"><%= society.societyName %></h2>
+        <p style="margin:4px 0; font-size:13px; color:#555;">
+          <%= society.societyAddress.address %>, 
+          <%= society.societyAddress.city %>, 
+          <%= society.societyAddress.district %> - <%= society.societyAddress.postalCode %>
+        </p>
+      </td>
+      <td style="padding:15px; text-align:right;">
+        <h3 style="margin:0; font-size:18px;">Receipt</h3>
+        <p style="margin:2px 0;">Receipt No: <b><%= receipt.invoice %></b></p>
+        <% let [month, date, year1] = new Date(receipt.date).toLocaleDateString().split("/") %>
+        <% let receiptMonth = new Date(receipt.date).toLocaleString("default", { month: "long" }) %>
+        <p style="margin:2px 0;">Date: <b><%= date %>/<%= month %>/<%= year1 %></b></p>
+        <p style="margin:2px 0;">For: <b><%= receiptMonth %>, <%= year1 %></b></p>
+      </td>
+    </tr>
+
+    <!-- Member Info -->
+    <tr style="border-bottom:1px solid #ddd;">
+      <td colspan="2" style="padding:15px;">
+        <p><b>Received From:</b> <%= resident.firstName %> <%= resident.lastName %> (Flat: <%= resident.flatNumber %>)</p>
+        <p><b>Amount:</b> ₹<%= receipt.amount %> (<span id="words" style="font-weight:bold;"></span>)</p>
+        <p><b>Date of Payment:</b> <%= date %> <%= receiptMonth %>, <%= year1 %></p>
+      </td>
+    </tr>
+
+    <!-- Remarks -->
+    <tr style="background:#f9f9f9; border-bottom:1px solid #ddd;">
+      <td colspan="2" style="padding:15px;">
+        <p><b>Remarks:</b></p>
+        <p>Maintenance charges received for the month of <%= receiptMonth %>, <%= year1 %>.</p>
+      </td>
+    </tr>
+
+    <!-- Footer / Signature -->
+    <tr>
+      <td style="padding:20px;">
+        <p style="font-size:15px;"><b>Total Paid:</b> ₹<%= receipt.amount %></p>
+      </td>
+      <td style="padding:20px; text-align:right;">
         <p>For <%= society.societyName %></p>
-        <br>
-        <p>Secretary/Treasurer</p>
-      </div>
-    </div>
-  </div>
-  <% } %>
+        <br><br>
+        <p><b>Secretary / Treasurer</b></p>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Hidden field for words conversion -->
+  <input id="number" type="text" style="display:none;" value="<%= receipt.amount %>" />
+</div>
+<% } %>
+
 
   <% if(resident.isAdmin){ %>
     <hr class="my-4">

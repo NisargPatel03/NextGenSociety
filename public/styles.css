@@ -445,3 +445,77 @@ tfoot td {
     .tabs { gap: 6px; }
 }
 
+/* ================================
+   Gate Inbox Page Styles
+================================= */
+.gate-inbox .card h2,
+.gate-inbox .card h3 {
+    margin-bottom: 16px;
+    color: #1B98E0;
+}
+
+.gate-inbox .table {
+    margin-top: 12px;
+    font-size: 15px;
+}
+
+.gate-inbox .table th {
+    background: #1B98E0;
+    color: #fff;
+    text-align: center;
+    font-weight: 600;
+}
+
+.gate-inbox .table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.gate-inbox .table tr:hover td {
+    background: #f9fbff;
+}
+
+.gate-inbox .btn-success,
+.gate-inbox .btn-danger {
+    padding: 6px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background 0.2s ease-in-out;
+}
+
+.gate-inbox .btn-success:hover {
+    background: #218838;
+}
+
+.gate-inbox .btn-danger:hover {
+    background: #c82333;
+}
+
+/* Status badges for history */
+.gate-inbox .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.gate-inbox .status-badge.approved {
+    background: #e6f4ea;
+    color: #137333;
+}
+.gate-inbox .status-badge.rejected {
+    background: #fde7e9;
+    color: #a50e1d;
+}
+.gate-inbox .status-badge.pending {
+    background: #fff4e5;
+    color: #8a5700;
+}
+
+/* Empty state */
+.gate-inbox .table td[colspan] {
+    color: #6b7280;
+    font-style: italic;
+}

@@ -12,14 +12,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abhijeetpandit7/E-Society.git"
+    "url": "https://github.com/NisargPatel03"
   },
   "author": "Nisarg Patel",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/abhijeetpandit7/E-Society/issues"
+    "url": "https://github.com/NisargPatel03"
   },
-  "homepage": "https://github.com/abhijeetpandit7/E-Society#readme",
+  "homepage": "https://github.com/NisargPatel03",
   "dependencies": {
     "body-parser": "^2.2.0",
     "connect-mongo": "^5.1.0",
